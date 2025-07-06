@@ -1,18 +1,19 @@
+# Import library untuk aplikasi web, load model, dan array numerik
 import streamlit as st
 import joblib
 import numpy as np
 
-# Load model dan alat preprocessing
+# Load model machine learning dan tools preprocessing
 model = joblib.load("model.joblib")
 label_encoders = joblib.load("label_encoders.joblib")
 scaler = joblib.load("scaler.joblib")
 
-# Konfigurasi halaman
+# Konfigurasi tampilan halaman Streamlit
 st.set_page_config(page_title="Prediksi Risiko Stroke", layout="centered")
 st.title("🧠 Prediksi Risiko Stroke")
 st.markdown("Masukkan informasi berikut untuk memprediksi risiko stroke:")
 
-# Opsi input kategori
+# Daftar opsi untuk input kategori
 categorical_inputs = {
     "gender": ["Male", "Female"],
     "hypertension": [0, 1],
@@ -23,7 +24,7 @@ categorical_inputs = {
     "smoking_status": ["never smoked", "Unknown", "formerly smoked", "smokes"],
 }
 
-# Fungsi input dengan placeholder
+# Fungsi membuat dropdown dengan placeholder kosong
 def input_with_placeholder(label, options, format_func=None, key=None):
     return st.selectbox(
         label,
@@ -32,12 +33,13 @@ def input_with_placeholder(label, options, format_func=None, key=None):
         key=key
     )
 
-# Format Yes/No
+# Format tampilan untuk pilihan Yes/No
 yes_no_format = lambda x: "Ya" if x == 1 else "Tidak"
 
-# Layout form: 3 kolom
+# Membagi form input ke 3 kolom
 col1, col2, col3 = st.columns(3)
 
+# Input data user
 with col1:
     gender = input_with_placeholder("Jenis Kelamin", categorical_inputs["gender"], key="gender")
     hypertension = input_with_placeholder("Riwayat Hipertensi", categorical_inputs["hypertension"], yes_no_format, key="hypertension")
@@ -54,7 +56,7 @@ with col3:
     ever_married = input_with_placeholder("Status Pernikahan", categorical_inputs["ever_married"], key="married")
     smoking_status = input_with_placeholder("Status Merokok", categorical_inputs["smoking_status"], key="smoking")
 
-# Kumpulkan semua input
+# Mengumpulkan semua input ke dalam dictionary
 user_inputs = {
     "gender": gender,
     "age": age,
@@ -68,24 +70,31 @@ user_inputs = {
     "smoking_status": smoking_status,
 }
 
-# Tombol prediksi
+# Tombol untuk melakukan prediksi
 if st.button("Prediksi Risiko Stroke"):
+    # Mengecek apakah ada input yang belum dipilih
     if "" in [user_inputs[key] for key in categorical_inputs]:
         st.warning("⚠️ Harap lengkapi semua pilihan terlebih dahulu.")
     else:
+        # Encode nilai kategorikal menjadi angka
         encoded = []
         for key, value in user_inputs.items():
             if key in label_encoders:
                 value = label_encoders[key].transform([value])[0]
             encoded.append(value)
 
+        # Membentuk array untuk prediksi
         encoded_array = np.array(encoded).reshape(1, -1)
-        numeric_indices = [1, 7, 8]
+
+        # Normalisasi kolom numerik
+        numeric_indices = [1, 7, 8]  # indeks untuk age, avg_glucose_level, bmi
         encoded_array[:, numeric_indices] = scaler.transform(encoded_array[:, numeric_indices])
 
+        # Melakukan prediksi dengan model
         pred = model.predict(encoded_array)[0]
         prob = model.predict_proba(encoded_array)[0][1]
 
+        # Menampilkan hasil prediksi
         st.subheader("Hasil Prediksi:")
         if pred == 1:
             st.error("⚠️ Berisiko mengalami stroke")
